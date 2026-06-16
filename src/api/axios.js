@@ -3,20 +3,27 @@ import axios from "axios";
 const PROD_API = "https://sedhealthcare-backend.onrender.com/api";
 const LOCAL_API = "http://localhost:5001/api";
 
-// Detect if running inside Capacitor (mobile app)
-const isMobile = () => {
-  if (typeof window === "undefined") return false;
-  // Capacitor exposes this global
-  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return true;
-  // Fallback: check protocol/scheme
-  if (window.location.protocol === "capacitor:") return true;
-  if (window.location.protocol === "https:" && window.location.hostname === "localhost") return true;
-  if (window.location.protocol === "http:" && window.location.hostname === "localhost" && window.location.port !== "5173" && window.location.port !== "") return true;
-  return false;
-};
-
 const getBaseURL = () => {
-  return isMobile() ? PROD_API : LOCAL_API;
+  // 1. If a build-time env var is set (Vercel sets VITE_API_URL), always use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // 2. Running in a browser
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Local dev machine → use local backend
+    if (host === "localhost" || host === "127.0.0.1") {
+      // But Capacitor also serves at localhost — detect native platform
+      if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+        return PROD_API;
+      }
+      return LOCAL_API;
+    }
+  }
+
+  // 3. Anything else (deployed web, mobile app) → production
+  return PROD_API;
 };
 
 const api = axios.create({
